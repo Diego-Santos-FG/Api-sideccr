@@ -2,6 +2,7 @@ const express = require('express');
 const axios = require('axios');
 const iconv = require('iconv-lite');
 const cors = require('cors');
+const path = require('path'); // Adicionei o módulo 'path'
 
 const app = express();
 const PORT = process.env.PORT || 3000; // Usar porta de ambiente ou 3000 como padrão
@@ -16,24 +17,38 @@ app.use(cors(corsOptions)); // Habilita CORS com opções
 app.use(express.json()); // Middleware para interpretar JSON no corpo das requisições
 app.use(express.static('public')); // Servir arquivos estáticos da pasta 'public'
 
+// Rota raiz para servir o arquivo HTML
+app.get('/', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
+
 // Rota de consulta
-app.get('/consulta', async (req, res) => {
+app.post('/consulta', async (req, res) => {
     const { usuario, chave } = req.body; // Extraindo os valores de usuario e chave do corpo da requisição
 
     // Calculando as datas
     const currentDate = new Date();
     const previousDate = new Date(currentDate);
-    previousDate.setDate(currentDate.getDate() - 1);
+    previousDate.setDate(currentDate.getDate() - 2); // Subtrai um dia para obter o dia anterior
+    previousDate.setUTCHours(3, 0, 0, 0); // Define o horário para 03:00:00 UTC
+
+    // Criando a data de fim (datafin) com horário fixo de 02:59:00Z
+    const datafin = new Date(currentDate);
+    datafin.setDate(currentDate.getDate() - 1);
+    datafin.setUTCHours(2, 59, 0, 0); // Define o horário para 02:59:00 UTC
 
     const dataini = previousDate.toISOString().split('.')[0] + 'Z';
-    const datafin = currentDate.toISOString().split('.')[0] + 'Z';
+    const datafinISO = datafin.toISOString().split('.')[0] + 'Z'; // Corrigi para datafin
+
+    console.log('dataini:', dataini); // Esperado: dia anterior às 03:00:00Z
+    console.log('datafin:', datafinISO); // Esperado: dia atual às 02:59:00Z
 
     const url = 'https://sideccr.daeebmt.sp.gov.br/sts_csv.jsp';
     const params = {
         usuario,
         chave,
         dataini,
-        datafin
+        datafin: datafinISO // Certificando-se de que está usando a variável correta
     };
 
     try {
