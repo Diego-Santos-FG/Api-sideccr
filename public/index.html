@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Consulta API</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #f4f4f4;
+        }
+
+        .container {
+            text-align: center;
+            background-color: #fff;
+            padding: 30px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            border-radius: 8px;
+            width: 80%;
+            max-width: 600px;
+        }
+
+        input[type="text"], input[type="password"], input[type="date"] {
+            width: 100%;
+            padding: 10px;
+            margin: 10px 0;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+
+        button {
+            padding: 10px 20px;
+            background-color: #28a745;
+            color: #fff;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background-color: #218838;
+        }
+
+        .result {
+            margin-top: 20px;
+            text-align: left;
+            white-space: pre-wrap;
+            background-color: #f8f9fa;
+            padding: 10px;
+            border-radius: 4px;
+            border: 1px solid #ccc;
+            height: 200px;
+            overflow-y: auto;
+            overflow-x: auto;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>Consulta API</h2>
+        <input type="text" id="usuario" placeholder="Usuário" required>
+        <input type="password" id="chave" placeholder="Chave" required>
+        <input type="date" id="data" required>
+        <button onclick="consultarAPI()">Consultar</button>
+        <div class="result" id="result"></div>
+    </div>
+
+    <script>
+        
+        function consultarAPI() {
+            const usuario = document.getElementById('usuario').value;
+            const chave = document.getElementById('chave').value;
+            const dataConsulta = document.getElementById('data').value;
+
+            // Printando os valores no console do navegador
+            console.log('Usuário:', usuario);
+            console.log('Chave:', chave);
+            console.log('DataConsulta:', dataConsulta);
+
+            fetch('/consulta', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ usuario, chave, dataConsulta })
+            })
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById('result').textContent = JSON.stringify(data, null, 4);
+            })
+            .catch(error => {
+                document.getElementById('result').textContent = 'Erro: ' + error.message;
+            });
+        }
+    </script>
+</body>
+</html>
