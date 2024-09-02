@@ -5,14 +5,22 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Consulta API</title>
     <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
         body {
-            font-family: Arial, sans-serif;
+            font-family: 'Arial', sans-serif;
             display: flex;
             justify-content: center;
             align-items: center;
             height: 100vh;
             margin: 0;
             background-color: #f4f4f4;
+            padding: 5%; /* Margem de 5% em todas as direções */
+            overflow: hidden; /* Esconde o scroll da tela, usando o scroll interno */
         }
 
         .container {
@@ -21,8 +29,16 @@
             padding: 30px;
             box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
             border-radius: 8px;
-            width: 80%;
-            max-width: 600px;
+            width: 50%; /* Agora ocupa 50% da largura da tela */
+            max-width: 800px; /* Limite máximo de largura */
+            max-height: 100%; /* Limite máximo de altura */
+            overflow-y: auto; /* Ativa o scroll vertical */
+        }
+
+        h2 {
+            font-size: 24px;
+            margin-bottom: 20px;
+            color: #333;
         }
 
         input[type="text"], input[type="password"], input[type="date"] {
@@ -30,16 +46,22 @@
             padding: 10px;
             margin: 10px 0;
             border: 1px solid #ccc;
-            border-radius: 4px;
+            border-radius: 50px;
+            text-align: center;
+            font-size: 14px;
         }
 
         button {
-            padding: 10px 20px;
+            width: 100%;
+            padding: 10px;
+            margin-top: 20px;
             background-color: #28a745;
             color: #fff;
             border: none;
-            border-radius: 4px;
+            border-radius: 50px;
             cursor: pointer;
+            font-size: 14px;
+            text-transform: uppercase;
         }
 
         button:hover {
@@ -49,38 +71,95 @@
         .result {
             margin-top: 20px;
             text-align: left;
-            white-space: pre-wrap;
             background-color: #f8f9fa;
             padding: 10px;
             border-radius: 4px;
             border: 1px solid #ccc;
-            height: 200px;
+            height: auto;
+            max-height: 400px; /* Limita a altura máxima */
             overflow-y: auto;
-            overflow-x: auto;
+            font-size: 12px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 14px;
+            table-layout: fixed; /* Faz com que a tabela seja responsiva */
+        }
+
+        th, td {
+            padding: 8px;
+            border: 1px solid #ddd;
+            text-align: center;
+            word-wrap: break-word; /* Quebra de linha nas células */
+        }
+
+        th {
+            background-color: #f4f4f4;
+            font-weight: bold;
+        }
+
+        .info-box {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 20px;
+            flex-wrap: wrap;
+        }
+
+        .info-box div {
+            background-color: #f8f9fa;
+            padding: 10px;
+            border-radius: 4px;
+            border: 1px solid #ccc;
+            width: 45%;
+            text-align: center;
+            font-size: 14px;
+            margin-top: 10px;
+        }
+
+        .info-box div span {
+            display: block;
+            font-weight: bold;
+            font-size: 16px;
+            margin-top: 5px;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                width: 100%; /* Ajusta para dispositivos menores */
+            }
+            .info-box div {
+                width: 100%; /* Ajusta para dispositivos menores */
+            }
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <h2>Consulta API</h2>
-        <input type="text" id="usuario" placeholder="Usuário" required>
-        <input type="password" id="chave" placeholder="Chave" required>
-        <input type="date" id="data" required>
+        <h2>Consulta Sidecc-R</h2>
+        <input type="text" id="usuario" placeholder="Cliente ID" required>
+        <input type="password" id="chave" placeholder="Senha" required>
+        <input type="date" id="data" placeholder="dd/mm/aaaa" required>
         <button onclick="consultarAPI()">Consultar</button>
-        <div class="result" id="result"></div>
+        <div class="info-box">
+            <div>
+                Linhas: <span id="totalObjects">0</span>
+            </div>
+            <div>
+                Horas: <span id="nonZeroValues">0h 0min</span>
+            </div>
+        </div>
+        <div class="result" id="result">Resultado:</div>
     </div>
 
     <script>
-        
+        let currentSortOrder = 'asc';  // Ordem atual de classificação (crescente)
+
         function consultarAPI() {
             const usuario = document.getElementById('usuario').value;
             const chave = document.getElementById('chave').value;
             const dataConsulta = document.getElementById('data').value;
-
-            // Printando os valores no console do navegador
-            console.log('Usuário:', usuario);
-            console.log('Chave:', chave);
-            console.log('DataConsulta:', dataConsulta);
 
             fetch('/consulta', {
                 method: 'POST',
@@ -91,12 +170,105 @@
             })
             .then(response => response.json())
             .then(data => {
-                document.getElementById('result').textContent = JSON.stringify(data, null, 4);
+                // Alterar o id para ser crescente
+                data.forEach((obj, index) => {
+                    obj.id = index + 1;  // Define um id crescente, começando em 1
+                    obj.vazao = parseFloat(obj.value) * 1000;  // Calcula a vazão em m³/h
+                    obj.start = formatarData(obj.start);  // Formata a data de início
+                    obj.end = formatarData(obj.end);  // Formata a data de fim
+                });
+
+                // Exibir os dados na tabela
+                exibirTabela(data);
+
+                // Atualizar as contagens
+                const totalObjects = data.length;
+                const totalMinutes = data.filter(obj => obj.value !== '0.000').length * 10;
+                const hours = Math.floor(totalMinutes / 60); // Horas inteiras
+                const minutes = totalMinutes % 60; // Minutos restantes
+
+                const nonZeroValues = `${hours}h ${minutes}min`;
+
+                document.getElementById('totalObjects').textContent = totalObjects;
+                document.getElementById('nonZeroValues').textContent = nonZeroValues;
             })
             .catch(error => {
                 document.getElementById('result').textContent = 'Erro: ' + error.message;
             });
         }
+
+        function exibirTabela(data) {
+            let table = '<table>';
+            table += `
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Usuário</th>
+                        <th>Início</th>
+                        <th>Fim</th>
+                        <th>Vazão (m³/h) 
+                            <button onclick="ordenarPorVazao()">&#x25B2;&#x25BC;</button>
+                        </th>
+                    </tr>
+                </thead>
+                <tbody>
+            `;
+            data.forEach(obj => {
+                table += `
+                    <tr>
+                        <td>${obj.id}</td>
+                        <td>${obj.usuario}</td>
+                        <td>${obj.start}</td>
+                        <td>${obj.end}</td>
+                        <td>${obj.vazao.toFixed(3)}</td>
+                    </tr>
+                `;
+            });
+            table += '</tbody></table>';
+            document.getElementById('result').innerHTML = table;
+        }
+
+        function ordenarPorVazao() {
+            // Obter os dados da tabela atual
+            const rows = Array.from(document.querySelectorAll('tbody tr'));
+            const data = rows.map(row => {
+                const cells = row.children;
+                return {
+                    id: cells[0].textContent,
+                    usuario: cells[1].textContent,
+                    start: cells[2].textContent,
+                    end: cells[3].textContent,
+                    vazao: parseFloat(cells[4].textContent)
+                };
+            });
+
+            // Alternar a ordem de classificação
+            currentSortOrder = currentSortOrder === 'asc' ? 'desc' : 'asc';
+
+            // Ordenar os dados pela vazão
+            data.sort((a, b) => {
+                if (currentSortOrder === 'asc') {
+                    return a.vazao - b.vazao;
+                } else {
+                    return b.vazao - a.vazao;
+                }
+            });
+
+            // Reexibir a tabela com os dados ordenados
+            exibirTabela(data);
+        }
+
+        function formatarData(data) {
+            const dataObj = new Date(data);
+            const dia = String(dataObj.getDate()).padStart(2, '0');
+            const mes = String(dataObj.getMonth() + 1).padStart(2, '0'); // Mês começa do zero
+            const horas = String(dataObj.getHours()).padStart(2, '0');
+            const minutos = String(dataObj.getMinutes()).padStart(2, '0');
+            
+            // Formato final: DD/MM HH:MM
+            return `${dia}/${mes} ${horas}:${minutos}`;
+        }
     </script>
 </body>
 </html>
+
